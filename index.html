@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learned π Metalens for Wide-Field-of-View Near-Infrared Imaging</title>
+<meta name="description" content="A single learned π metalens for uniform-quality 100° FoV near-infrared imaging. SIGGRAPH Asia 2026 / ACM Transactions on Graphics.">
+<meta property="og:title" content="Learned π Metalens for Wide-Field-of-View Near-Infrared Imaging">
+<meta property="og:description" content="100° FoV NIR imaging with a single 0.8 mm-focal-length metalens. SIGGRAPH Asia 2026 · ACM TOG.">
+<meta property="og:image" content="static/images/result_fov_angles.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================
+     Theme — background is pure black so slide crops blend in.
+     ========================================================= */
+  :root {
+    --bg: #000;
+    --bg-2: #0c0c10;
+    --line: #1f1f26;
+    --line-2: #2c2c35;
+    --fg: #f1f1f4;
+    --mute: #8d8d99;
+    --dim: #5c5c68;
+    --pink: #ff4f86;      /* "ours" — matches the talk slides */
+    --blue: #35b6ff;      /* 50° in the slides */
+    --yellow: #ffe14a;    /* 0° in the slides */
+    --quad: #a3a3ad;
+    --sans: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --w: 1120px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 70px; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  img { max-width: 100%; display: block; }
+  .wrap { max-width: var(--w); margin: 0 auto; padding: 0 28px; }
+  .pink { color: var(--pink); }
+
+  /* ---------- sticky nav ---------- */
+  .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 60; background: rgba(0,0,0,.72); backdrop-filter: blur(12px);
+         border-bottom: 1px solid var(--line); transform: translateY(-100%); transition: transform .3s; }
+  .nav.show { transform: none; }
+  .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 56px; gap: 20px; }
+  .nav-title { font-weight: 700; font-stretch: 110%; font-size: 15px; white-space: nowrap; }
+  .nav-title i { color: var(--pink); }
+  .nav-links { display: flex; gap: 22px; overflow-x: auto; font-family: var(--mono); font-size: 12px; letter-spacing: .04em; }
+  .nav-links a { color: var(--mute); white-space: nowrap; }
+  .nav-links a:hover, .nav-links a.active { color: var(--fg); }
+
+  /* ---------- HERO ---------- */
+  .hero { position: relative; overflow: hidden; }
+  #lens { position: absolute; top: 50%; right: -3vw; transform: translateY(-50%); width: min(38vw, 500px); height: min(38vw, 500px); pointer-events: none; opacity: .5; }
+  .hero::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(90deg, #000 45%, rgba(0,0,0,.5) 65%, rgba(0,0,0,0) 85%); }
+  .hero-inner { position: relative; z-index: 2; padding-top: 84px; padding-bottom: 80px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 10px; }
+  .badge { font-family: var(--mono); font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; padding: 7px 12px; border: 1px solid var(--line-2); border-radius: 4px; color: #d4d4db; }
+  .badge.sig { background: var(--pink); border-color: var(--pink); color: #000; font-weight: 500; }
+  h1 { font-stretch: 112%; font-weight: 750; letter-spacing: -0.025em; font-size: clamp(40px, 6.4vw, 84px); line-height: .98; margin: 34px 0 30px; max-width: 920px; }
+  h1 .pi { color: var(--pink); font-style: italic; font-weight: 600; }
+  h1 .sub { display: block; font-weight: 400; font-stretch: 100%; color: #b4b4be; font-size: .47em; letter-spacing: -0.01em; line-height: 1.15; margin-top: 14px; }
+  .authors { max-width: 760px; font-size: 16px; color: #e6e6ec; line-height: 1.9; }
+  .authors > * { margin-right: 14px; white-space: nowrap; }
+  .authors a { border-bottom: 1px solid rgba(255,255,255,.25); }
+  .authors a:hover { color: var(--pink); border-color: var(--pink); }
+  .authors sup { color: var(--pink); }
+  .affil { font-family: var(--mono); font-size: 12.5px; color: var(--mute); margin-top: 10px; line-height: 1.7; }
+  .buttons { display: flex; gap: 12px; margin-top: 34px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 22px; font-weight: 600; font-size: 15px; border-radius: 6px; transition: .18s; }
+  .btn svg { width: 18px; height: 18px; }
+  .btn.solid { background: #fff; color: #000; }
+  .btn.solid:hover { background: var(--pink); }
+  .btn.line { border: 1px solid rgba(255,255,255,.35); }
+  .btn.line:hover { border-color: var(--pink); color: var(--pink); }
+
+  .specs { position: relative; z-index: 3; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #000; }
+  .specs .wrap { display: grid; grid-template-columns: repeat(5, 1fr); padding: 0; }
+  .spec { padding: 26px 28px 28px; border-left: 1px solid var(--line); }
+  .spec:first-child { border-left: 0; }
+  .spec b { display: block; font-stretch: 115%; font-weight: 700; font-size: clamp(28px, 3.2vw, 42px); line-height: 1; letter-spacing: -0.02em; }
+  .spec b small { font-size: .5em; font-weight: 500; color: var(--mute); margin-left: 2px; }
+  .spec.hot b { color: var(--pink); }
+  .spec span { display: block; margin-top: 10px; font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em; color: var(--mute); line-height: 1.45; }
+
+  /* ---------- TEASER ---------- */
+  .teaser { margin-top: 90px; }
+  .teaser-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .teaser-row figure { margin: 0; text-align: center; }
+  .teaser-row img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+  .teaser-row figcaption { margin-top: 12px; font-family: var(--mono); font-size: 12.5px; color: var(--mute); line-height: 1.4; }
+  .teaser-row figure.ours figcaption { color: var(--pink); }
+  .teaser-row figure.ours figcaption::before { content: ""; display: block; width: 28px; height: 2px; background: var(--pink); margin: 0 auto 10px; }
+  .teaser-row figure:not(.ours) figcaption::before { content: ""; display: block; height: 2px; margin-bottom: 10px; }
+  .teaser-note { margin-top: 18px; text-align: center; font-family: var(--mono); font-size: 11.5px; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; }
+
+  .tldr { display: grid; grid-template-columns: 200px 1fr; gap: 40px; margin-top: 90px; padding-top: 28px; border-top: 1px solid var(--line-2); }
+  .label { font-family: var(--mono); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
+  .tldr p { margin: 0; font-size: clamp(21px, 2.3vw, 28px); line-height: 1.38; font-weight: 500; letter-spacing: -0.01em; }
+  details { margin-top: 18px; }
+  summary { cursor: pointer; font-family: var(--mono); font-size: 13px; color: var(--mute); list-style: none; display: inline-block; }
+  summary:hover { color: var(--fg); }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "+ "; color: var(--pink); }
+  details[open] > summary::before { content: "− "; }
+  .abs { font-size: 15.5px; line-height: 1.75; color: #b9b9c3; margin-top: 14px; max-width: 800px; }
+
+  /* ---------- SECTIONS ---------- */
+  .block { margin-top: 140px; }
+  .block-head { display: grid; grid-template-columns: 200px 1fr; gap: 40px; align-items: end; margin-bottom: 36px; }
+  .idx { font-family: var(--mono); font-size: 12.5px; color: var(--pink); letter-spacing: .08em; }
+  .idx b { display: block; font-family: var(--sans); font-stretch: 125%; font-weight: 800; font-size: 64px; line-height: .9; color: var(--fg); letter-spacing: -0.04em; margin-top: 6px; }
+  h2 { font-stretch: 108%; font-weight: 700; font-size: clamp(28px, 3.4vw, 42px); letter-spacing: -0.02em; line-height: 1.05; margin: 0 0 12px; }
+  .one { margin: 0; color: var(--mute); font-size: 17px; max-width: 720px; }
+  .one b { color: var(--fg); font-weight: 600; }
+  .cap { font-family: var(--mono); font-size: 12px; color: var(--mute); margin-top: 12px; }
+
+  /* Why π: tabbed graph */
+  .why { display: grid; grid-template-columns: 1.15fr 1fr; gap: 56px; align-items: center; }
+  .stage { position: relative; aspect-ratio: 1206 / 1020; }
+  .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .45s; }
+  .stage img.on { opacity: 1; }
+  .steps { display: flex; flex-direction: column; gap: 10px; }
+  .step { text-align: left; font: inherit; color: inherit; background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; cursor: pointer; transition: .2s; }
+  .step:hover { border-color: var(--line-2); background: var(--bg-2); }
+  .step .t { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; color: var(--mute); }
+  .step .d { display: block; margin-top: 6px; font-size: 17px; line-height: 1.45; color: #c9c9d2; }
+  .step.on { border-color: var(--c, var(--pink)); background: var(--bg-2); }
+  .step.on .t { color: var(--c, var(--pink)); }
+  .step.on .d { color: var(--fg); }
+
+  /* Method details */
+  .explorer { margin-top: 20px; }
+  .tabs { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--line-2); border-radius: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tabs button { font: 500 14px var(--sans); color: var(--mute); background: transparent; border: 0; border-radius: 5px; padding: 8px 14px; cursor: pointer; }
+  .tabs button.on { background: var(--fg); color: #000; }
+  .mx { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .mx[hidden] { display: none; }
+  .mx[data-fig="1"] { grid-template-columns: 1.35fr 1fr; align-items: center; }
+  .mx-fig { position: relative; background: #fff; border-radius: 10px; padding: 14px; overflow: hidden; }
+  .mx-fig img { width: 100%; cursor: zoom-in; }
+  .hl { position: absolute; pointer-events: none; border: 2px solid var(--pink); border-radius: 8px; opacity: 0;
+        box-shadow: 0 0 0 9999px rgba(0,0,0,.5); transition: left .35s ease, top .35s ease, width .35s ease, height .35s ease, opacity .25s; }
+  .hl.on { opacity: 1; }
+  .mx-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .mx[data-fig="1"] .mx-steps { grid-template-columns: 1fr; }
+  .mx-steps button { text-align: left; font: 14px/1.5 var(--sans); color: #c4c4cd; background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: .2s; }
+  .mx-steps button b { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 8px; border-radius: 50%; border: 1px solid var(--line-2); font: 500 12px var(--mono); color: var(--mute); }
+  .mx-steps button:hover { border-color: var(--line-2); background: var(--bg-2); }
+  .mx-steps button.on { border-color: var(--pink); background: var(--bg-2); color: var(--fg); }
+  .mx-steps button.on b { background: var(--pink); border-color: var(--pink); color: #000; }
+  .mx-steps em { font-style: normal; color: var(--pink); }
+
+  /* System */
+  .sys-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: stretch; }
+  .sys-row + .sys-row { margin-top: 26px; }
+  .sys-row.first { grid-template-columns: 1115fr 1012fr; gap: 64px; position: relative; }
+  .sys-row.first .im.sem { outline: 1.5px dashed var(--pink); outline-offset: 0; }
+  .zoom-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 2; }
+  .zoom-lines rect, .zoom-lines line { fill: none; stroke: var(--pink); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  .sys-row.first .im { aspect-ratio: auto; }
+  .sys-row.first .im img { height: auto; }
+  .sys-row.two { grid-template-columns: 490fr 1412fr; }
+  .sys-row figure { margin: 0; display: flex; flex-direction: column; }
+  .sys-row .im { flex: 1; display: flex; align-items: center; justify-content: center; background: var(--bg-2); border-radius: 10px; overflow: hidden; aspect-ratio: 4 / 3; }
+  .sys-row .im img { width: 100%; height: 100%; object-fit: cover; }
+  .sys-row.two .im { aspect-ratio: auto; background: #fff; }
+  .sys-row.two .im img { object-fit: contain; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  .chip { font-family: var(--mono); font-size: 12.5px; padding: 8px 14px; border: 1px solid var(--line-2); border-radius: 999px; color: #d4d4db; }
+  .chip b { color: var(--pink); font-weight: 500; }
+
+  /* Quantitative */
+  .quant { display: grid; grid-template-columns: 0.9fr 1.3fr; gap: 64px; align-items: center; }
+  .plot { margin: 0; }
+  .lab, .kpi .lab { margin: 0 0 14px; }
+  .kpis { display: grid; gap: 26px; margin-top: 38px; padding-top: 30px; border-top: 1px solid var(--line-2); }
+  .kpi .big small { font-size: .5em; font-weight: 500; color: var(--mute); }
+  .fov img { width: 100%; }
+  .fov .cap { text-align: center; }
+  .plots { display: grid; grid-template-columns: 1fr; gap: 48px; }
+  .kpi .big { font-stretch: 112%; font-weight: 700; font-size: clamp(28px, 3vw, 40px); letter-spacing: -0.02em; line-height: 1; }
+  .kpi .big s { text-decoration: none; color: var(--quad); font-weight: 500; }
+  .kpi .big .arr { color: var(--dim); font-weight: 400; margin: 0 6px; }
+  .plot-img { width: 100%; }
+  .lab, .kpi .lab { font-family: var(--mono); font-size: 12px; color: var(--mute); margin: 8px 0 12px; letter-spacing: .03em; }
+
+  /* Qualitative */
+  .qual { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .qual figure { margin: 0; }
+  .qual .head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-weight: 600; font-stretch: 108%; font-size: 20px; }
+  .qual .head::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+  .qual img { width: 100%; cursor: zoom-in; }
+
+  /* Eye tracking */
+  .eye-closeup img, .eye-strip img { width: 100%; }
+  .eye-strip { margin-top: 40px; }
+  .eye-legend { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: var(--mute); margin-top: 12px; }
+
+  /* BibTeX / footer */
+  .cite { margin-top: 150px; padding: 70px 0 40px; border-top: 1px solid var(--line); }
+  .bib { position: relative; margin-top: 22px; }
+  pre { margin: 0; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 24px 26px; overflow-x: auto; font: 13.5px/1.7 var(--mono); color: #d0d0d8; }
+  pre .k { color: var(--pink); }
+  .copy { position: absolute; top: 14px; right: 14px; font: 500 12px var(--mono); padding: 7px 12px; border-radius: 4px; border: 1px solid var(--line-2); background: transparent; color: var(--fg); cursor: pointer; }
+  .copy:hover { border-color: var(--pink); color: var(--pink); }
+  .foot { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-top: 60px; padding-top: 22px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 12px; color: var(--dim); }
+  .foot a { color: var(--mute); border-bottom: 1px solid var(--line-2); }
+
+  /* lightbox */
+  .zoom { cursor: zoom-in; }
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.94); display: none; place-items: center; z-index: 100; padding: 3vh 3vw; cursor: zoom-out; }
+  .lightbox.open { display: grid; }
+  .lightbox img { max-width: 94vw; max-height: 94vh; border-radius: 6px; }
+
+  /* reveal on scroll */
+  .rv { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+  .rv.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; transition: none; } }
+
+  @media (max-width: 880px) {
+    #lens { right: -30vw; width: 80vw; height: 80vw; opacity: .3; }
+    .specs .wrap { grid-template-columns: repeat(2, 1fr); }
+    .spec { border-left: 0; border-top: 1px solid var(--line); padding: 20px 28px; }
+    .spec:first-child { border-top: 0; }
+    .spec:nth-child(2) { border-top: 0; }
+    .spec:last-child { grid-column: span 2; }
+    .teaser-row { grid-template-columns: repeat(2, 1fr); gap: 22px 14px; }
+    .tldr, .block-head { grid-template-columns: 1fr; gap: 14px; }
+    .idx b { font-size: 44px; }
+    .why, .quant, .qual { grid-template-columns: 1fr; gap: 28px; }
+    .plots { grid-template-columns: 1fr; }
+    .fov img { max-width: 420px; margin: 0 auto; }
+    .sys-row.two { grid-template-columns: 1fr; }
+    .sys-row.two figure:first-child .im img { max-height: 340px; width: auto; }
+    .mx-steps, .mx[data-fig="1"] { grid-template-columns: 1fr !important; }
+    .block { margin-top: 100px; }
+    .nav-title { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= NAV (appears after hero) ================= -->
+<nav class="nav" id="nav">
+  <div class="wrap">
+    <a class="nav-title" href="#top">Learned <i>π</i> Metalens</a>
+    <div class="nav-links">
+      <a href="#why">Why π</a>
+      <a href="#method">Method</a>
+      <a href="#system">System</a>
+      <a href="#quantitative">Results</a>
+      <a href="#eyetracking">Eye tracking</a>
+      <a href="#bibtex">BibTeX</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header class="hero" id="top">
+  <canvas id="lens" aria-hidden="true"></canvas>
+  <div class="wrap hero-inner">
+    <div class="badges">
+      <span class="badge sig">SIGGRAPH Asia 2026</span>
+      <span class="badge">ACM Transactions on Graphics · Vol. 45, No. 6</span>
+    </div>
+
+    <h1>Learned <span class="pi">π</span> Metalens
+      <span class="sub">for Wide-Field-of-View Near-Infrared Imaging</span></h1>
+
+    <div class="authors">
+      <a href="https://eschoi.com" target="_blank">Eunsue Choi<sup>1*</sup></a>
+      <a href="https://scholar.google.co.kr/citations?user=0rZekfsAAAAJ" target="_blank">Gyeongtae Kim<sup>1*</sup></a>
+      <!-- TODO: co-author links — change <span> to <a href="..." target="_blank"> -->
+      <span>Eunji Lee<sup>1*</sup></span>
+      <span>Seungwoo Yoon<sup>1</sup></span>
+      <span>Youngmo Jeong<sup>2</sup></span>
+      <span>Woohyeok Kim<sup>1</sup></span>
+      <span>Minseok Choi<sup>1</sup></span>
+      <span>Sunghyun Cho<sup>1</sup></span>
+      <a href="https://sites.google.com/site/junsukrho/" target="_blank">Junsuk Rho<sup>1†</sup></a>
+      <a href="https://sites.google.com/view/shbaek/" target="_blank">Seung-Hwan Baek<sup>1†</sup></a>
+    </div>
+    <div class="affil"><sup>1</sup>POSTECH &nbsp;·&nbsp; <sup>2</sup>Samsung Research<br>* equal contribution · † corresponding authors</div>
+
+    <div class="buttons">
+      <a class="btn solid" href="https://doi.org/10.1145/3842569" target="_blank">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Paper</a>
+      <a class="btn line" href="https://github.com/ches00/learned-pi-lens" target="_blank">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5z"/></svg>Code</a>
+    </div>
+  </div>
+</header>
+
+<div class="specs">
+  <div class="wrap">
+    <div class="spec"><b>100°</b><span>FIELD OF VIEW<br>single flat lens</span></div>
+    <div class="spec"><b>0.8<small>mm</small></b><span>FOCAL LENGTH</span></div>
+    <div class="spec"><b>2<small>mm</small></b><span>LENS DIAMETER<br>NA 0.78 @ 850 nm</span></div>
+    <div class="spec hot"><b>+14%</b><span>MTF10 AT THE EDGE<br>vs. quadratic 2π</span></div>
+    <div class="spec hot"><b>2.4×</b><span>EFFICIENCY UNIFORMITY<br>vs. quadratic 2π</span></div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <!-- ================= TEASER ================= -->
+  <section class="teaser rv">
+    <div class="teaser-row">
+      <figure><img class="zoom" src="static/images/teaser_gt.png" alt="Ground truth"><figcaption>Ground truth</figcaption></figure>
+      <figure><img class="zoom" src="static/images/teaser_2pi.png" alt="Conventional 0 to 2π"><figcaption>Conventional<br>0 – 2π</figcaption></figure>
+      <figure><img class="zoom" src="static/images/teaser_pi_conv.png" alt="0 to π conventional"><figcaption>0 – π<br>conventional design</figcaption></figure>
+      <figure class="ours"><img class="zoom" src="static/images/teaser_pi_ours.png" alt="0 to π learned (ours)"><figcaption>0 – π<br>learned (ours)</figcaption></figure>
+    </div>
+    <div class="teaser-note">100° FoV · simulation</div>
+  </section>
+
+  <div class="tldr rv" id="abstract">
+    <div class="label">TL;DR</div>
+    <div>
+      <p>Full 2π phase and high transmission cannot coexist at wide angles. We restrict the lens to <span class="pink">0–π</span>, keeping only meta-atoms that stay bright at every angle, and learn it with <span class="pink">angle-aware optimization</span> that models each meta-atom's angle-dependent response. The result is bright, sharp imaging across 100°.</p>
+      <details>
+        <summary>Full abstract</summary>
+        <p class="abs">Wide–field-of-view (FoV) near-infrared (NIR) imaging is vital for compact augmented reality and robotic systems. Conventional wide-FoV optics rely on bulky compound refractive optics, limiting miniaturization. Metalenses composed of sub-wavelength meta-atoms offer a compact alternative. However, achieving high transmission and complete 2π phase coverage simultaneously over wide angle-of-incidence (AOI) remains challenging, leading to blur and non-uniform efficiency across the field. Here, we present a learned π metalens based on an AOI-aware design framework that achieves uniform-quality 100° FoV NIR imaging. Rather than enforcing full 2π phase control, we leverage meta-atoms that maintain high-transmission across wide angular ranges, which inherently exhibit restricted phase coverage. To design such a phase-limited metalens, we introduce a differentiable phase-limited metalens representation that incorporates the AOI-aware vectorial response of meta-atoms. This effectively learns a metalens using phase-limited high-transmission meta-atoms, yielding improvements in focusing efficiency and image sharpness across a wide FoV. Our learned π metalens demonstrates a 14% improvement in modulation transfer function at the largest AOI and a 2.4× enhancement in focusing-efficiency uniformity compared to conventional quadratic 2π metalenses. Our results suggest that, when AOI-dependent responses are properly modeled, complete 2π phase coverage is not strictly required for high-performance wide-FoV metalenses, opening new opportunities for compact NIR imaging systems in robotics, human-computer interaction, and eye-tracking in extended reality systems.</p>
+      </details>
+    </div>
+  </div>
+
+  <!-- ================= 01 WHY π ================= -->
+  <section class="block" id="why">
+    <div class="block-head rv">
+      <div class="idx">MOTIVATION<b>01</b></div>
+      <div>
+        <h2>Why π?</h2>
+        <p class="one">Look at each meta-atom. Click through the three steps.</p>
+      </div>
+    </div>
+    <div class="why rv">
+      <div class="stage" id="whyStage">
+        <img class="on" src="static/images/why_0deg.png" alt="Transmittance at 0 degrees">
+        <img src="static/images/why_50deg.png" alt="Transmittance at 50 degrees">
+        <img src="static/images/why_ours.png" alt="Ours uses only 0 to pi">
+      </div>
+      <div class="steps" id="whySteps">
+        <button class="step on" style="--c: var(--yellow)">
+          <span class="t">① NORMAL INCIDENCE · 0°</span>
+          <span class="d">Meta-atoms of every size transmit light well across the full 0–2π range.</span>
+        </button>
+        <button class="step" style="--c: var(--blue)">
+          <span class="t">② WIDE ANGLE · 50°</span>
+          <span class="d">Transmission drops sharply beyond π, so the edges of a 2π lens go dark and blurry.</span>
+        </button>
+        <button class="step" style="--c: var(--pink)">
+          <span class="t">③ OURS · 0–π ONLY</span>
+          <span class="d">Keep only meta-atoms that stay bright at every angle, then learn the lens to make up for the smaller phase range.</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 02 METHOD ================= -->
+  <section class="block" id="method">
+    <div class="block-head rv">
+      <div class="idx">METHOD<b>02</b></div>
+      <div>
+        <h2>Angle-aware lens optimization</h2>
+        <p class="one">A <b>0–π lens phase</b> is simulated with <b>pre-computed meta-atom responses at every angle</b>, and the loss against ground truth updates the lens end-to-end.</p>
+      </div>
+    </div>
+    <img class="rv zoom" src="static/images/method_overview.png" alt="Method overview">
+    <details class="rv" id="methodDetails">
+      <summary>Details: walk through the paper figures step by step</summary>
+      <div class="explorer">
+        <div class="tabs" id="mxTabs">
+          <button class="on" data-fig="0">Differentiable framework</button>
+          <button data-fig="1">Angle-aware metalens representation</button>
+        </div>
+        <!-- Highlight boxes are in % of the image: x, y, w, h. Adjust if you replace the figures. -->
+        <div class="mx" data-fig="0">
+          <div class="mx-fig"><img src="static/images/method_framework.png" alt="Differentiable framework"><div class="hl"></div></div>
+          <div class="mx-steps">
+            <button data-box="0,4,31,56"><b>1</b>Lens parameters <i>p</i>, AOI θ, phase limit <i>c</i>, and pre-computed meta-atom responses <i>T</i> enter <i>f</i><sub>metalens</sub>.</button>
+            <button data-box="31,0,27,56"><b>2</b>Output: an AOI-aware, phase-limited 2D complex vectorial wavefront (amplitude &amp; phase ≤ π).</button>
+            <button data-box="58,0,32,97"><b>3</b>AOI-specific PSFs are summed into an <em>AOI-accumulated PSF</em> that captures crosstalk between angles.</button>
+            <button data-box="19,57,81,43"><b>4</b>The simulated image is compared with ground truth; <i>L</i><sub>sharp</sub> + <i>L</i><sub>focus</sub> update the lens by backpropagation.</button>
+          </div>
+        </div>
+        <div class="mx" data-fig="1" hidden>
+          <div class="mx-fig"><img src="static/images/method_representation.png" alt="Metalens representation"><div class="hl"></div></div>
+          <div class="mx-steps">
+            <button data-box="0,0,44,47"><b>1</b>The 1D vector <i>p</i> is squashed to 0–<i>c</i> (here π) and rotated into a 2D phase map.</button>
+            <button data-box="43,0,57,47"><b>2</b>Phase → meta-atom diameter through lookup table <i>T</i><sub>1</sub> (differentiable interpolation).</button>
+            <button data-box="0,48,100,52"><b>3</b>Diameter + AOI θ → TE/TM amplitude &amp; phase through table <i>T</i><sub>2</sub>, giving the 2D complex vectorial wavefront.</button>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= 03 SYSTEM ================= -->
+  <section class="block" id="system">
+    <div class="block-head rv">
+      <div class="idx">PROTOTYPE<b>03</b></div>
+      <div>
+        <h2>Experimental system</h2>
+        <p class="one">A fabricated a-Si:H metalens with 580&nbsp;nm-tall nano-pillars, imaged under 850&nbsp;nm illumination.</p>
+      </div>
+    </div>
+    <div class="sys-row first rv" id="zoomRow">
+      <svg class="zoom-lines" aria-hidden="true"></svg>
+      <figure><div class="im"><img class="zoom" id="lensImg" src="static/images/lens_photo.png" alt="Fabricated metalens"></div><div class="cap">Fabricated metalens · 2 mm</div></figure>
+      <figure><div class="im sem"><img class="zoom" id="semImg" src="static/images/meta_atoms_sem.png" alt="Meta-atoms SEM"></div><div class="cap">Meta-atoms (SEM, zoomed)</div></figure>
+    </div>
+    <div class="sys-row two rv">
+      <figure><div class="im white"><img class="zoom" src="static/images/system_diagram.png" alt="Imaging configuration diagram"></div><div class="cap">Imaging configuration</div></figure>
+      <figure><div class="im white"><img class="zoom" src="static/images/system_prototype.png" alt="Imaging prototype"></div><div class="cap">Imaging prototype · metalens mounted on the sensor</div></figure>
+    </div>
+    <div class="chips rv">
+      <span class="chip"><b>100°</b> field of view</span>
+      <span class="chip"><b>2 mm</b> diameter</span>
+      <span class="chip"><b>0.8 mm</b> focal length</span>
+      <span class="chip"><b>850 nm</b> NIR</span>
+    </div>
+  </section>
+
+  <!-- ================= 04 QUANTITATIVE ================= -->
+  <section class="block" id="quantitative">
+    <div class="block-head rv">
+      <div class="idx">RESULTS<b>04</b></div>
+      <div>
+        <h2>Uniform efficiency, sharper edges</h2>
+        <p class="one">One raw capture covers the full 100° FoV. Compared with a quadratic 2π metalens, efficiency stays flat across angles and the edge MTF improves.</p>
+      </div>
+    </div>
+    <div class="quant rv">
+      <div class="fov">
+        <img class="zoom" src="static/images/result_fov_angles.png" alt="Raw capture with measurement points from 0 to 46 degrees">
+        <div class="cap">Raw capture through our lens · <span class="pink">100° FoV</span></div>
+        <div class="kpis">
+          <div class="kpi">
+            <div class="big"><s>2.4%</s><span class="arr">→</span><span class="pink">8.7%</span></div>
+            <div class="lab">FOCUSING EFFICIENCY AT 50°</div>
+          </div>
+          <div class="kpi">
+            <div class="big"><s>126</s><span class="arr">→</span><span class="pink">144</span><small> lp/mm</small></div>
+            <div class="lab">MTF10 AT THE EDGE · <span class="pink">+14%</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="plots">
+        <figure class="plot"><figcaption class="lab">FOCUSING EFFICIENCY vs. ANGLE OF INCIDENCE</figcaption>
+          <img class="zoom plot-img" src="static/images/result_efficiency.png" alt="Focusing efficiency vs angle"></figure>
+        <figure class="plot"><figcaption class="lab">MTF · CENTER (0°) AND EDGE (46°)</figcaption>
+          <img class="zoom plot-img" src="static/images/result_mtf.png" alt="MTF center and edge"></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 05 QUALITATIVE ================= -->
+  <section class="block" id="qualitative">
+    <div class="block-head rv">
+      <div class="idx">RESULTS<b>05</b></div>
+      <div>
+        <h2>Details preserved at large angles</h2>
+        <p class="one">Zoomed into the same peripheral region: the checkerboard stays resolved with ours and washes out with the quadratic lens.</p>
+      </div>
+    </div>
+    <div class="qual rv">
+      <figure><div class="head" style="--c: var(--pink)"><span class="pink">Learned π (ours)</span></div><img src="static/images/qual_ours.png" alt="Learned pi zoom"></figure>
+      <figure><div class="head" style="--c: var(--quad)">Quadratic 2π</div><img src="static/images/qual_quad.png" alt="Quadratic zoom"></figure>
+    </div>
+  </section>
+
+  <!-- ================= 06 EYE TRACKING ================= -->
+  <section class="block" id="eyetracking">
+    <div class="block-head rv">
+      <div class="idx">APPLICATION<b>06</b></div>
+      <div>
+        <h2>Compact eye tracking</h2>
+        <p class="one">The metalens sits directly on the sensor, <b>0.8&nbsp;mm apart</b>. Pupil boundaries stay sharp even at 50°.</p>
+      </div>
+    </div>
+    <div class="eye-closeup rv"><img class="zoom" src="static/images/sensor_closeup.png" alt="Metalens mounted on the sensor"></div>
+    <div class="eye-strip rv">
+      <img class="zoom" src="static/images/eyetracking.png" alt="Tracked pupils from center to edge">
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= BIBTEX ================= -->
+<section class="cite" id="bibtex">
+  <div class="wrap">
+    <div class="idx">CITE</div>
+    <h2 style="margin-top:8px">BibTeX</h2>
+    <div class="bib">
+      <button class="copy" id="copyBtn">COPY</button>
+<pre id="bibText"><span class="k">@article</span>{choi2026learned,
+  author    = {Choi, Eunsue and Kim, Gyeongtae and Lee, Eunji
+               and Yoon, Seungwoo and Jeong, Youngmo
+               and Kim, Woohyeok and Choi, Minseok
+               and Cho, Sunghyun and Rho, Junsuk
+               and Baek, Seung-Hwan},
+  title     = {Learned pi Metalens for Wide-Field-of-View
+               Near-Infrared Imaging},
+  journal   = {ACM Transactions on Graphics (TOG)},
+  year      = {2026},
+  volume    = {45},
+  number    = {6},
+  articleno = {230},
+  numpages  = {15},
+  doi       = {10.1145/3842569},
+  url       = {https://doi.org/10.1145/3842569}
+}</pre>
+    </div>
+    <div class="foot">
+      <span>© 2026 · <a href="https://doi.org/10.1145/3842569" target="_blank">doi.org/10.1145/3842569</a></span>
+      <span>Website licensed under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a></span>
+    </div>
+  </div>
+</section>
+
+<div class="lightbox" id="lightbox"><img alt=""></div>
+
+<script>
+/* ---------- Hero: metalens canvas (π-wrapped meta-atom lattice) ---------- */
+(function () {
+  const cv = document.getElementById('lens'), ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W, R, dpr;
+  function size() { dpr = Math.min(devicePixelRatio || 1, 2); W = cv.getBoundingClientRect().width; cv.width = cv.height = W * dpr; R = W / 2; }
+  function draw(t) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, W);
+    const step = Math.max(8, W / 46), rad = R * 0.96, rowH = step * 0.866;
+    const g = ctx.createRadialGradient(R, R, 0, R, R, rad);
+    g.addColorStop(0, 'rgba(255,45,74,0.22)'); g.addColorStop(.7, 'rgba(255,45,74,0.05)'); g.addColorStop(1, 'rgba(255,45,74,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(R, R, rad, 0, 7); ctx.fill();
+    const k = (6 * Math.PI) / (rad * rad); let row = 0;
+    for (let y = step / 2; y < W; y += rowH, row++) {
+      for (let x = step / 2 + (row % 2) * step / 2; x < W; x += step) {
+        const r = Math.hypot(x - R, y - R); if (r > rad) continue;
+        const u = (((k * r * r - t / 4200) % Math.PI + Math.PI) % Math.PI) / Math.PI;  // π-wrapped phase, 0..1
+        const edge = 1 - Math.pow(r / rad, 8);
+        ctx.fillStyle = `rgba(${150 + 105 * u | 0},${30 + 20 * u | 0},${55 + 20 * u | 0},${(0.35 + 0.6 * u) * edge})`;
+        ctx.beginPath(); ctx.arc(x, y, step * (0.10 + 0.22 * u), 0, 7); ctx.fill();
+      }
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(R, R, rad + 6, 0, 7); ctx.stroke();
+  }
+  size(); addEventListener('resize', size);
+  if (reduce) { draw(0); return; }
+  let vis = true; new IntersectionObserver(e => vis = e[0].isIntersecting).observe(cv);
+  (function loop(t) { if (vis) draw(t); requestAnimationFrame(loop); })(0);
+})();
+
+/* ---------- Nav show/hide + active section ---------- */
+(function () {
+  const nav = document.getElementById('nav'), hero = document.getElementById('top');
+  const links = [...nav.querySelectorAll('.nav-links a')], secs = links.map(a => document.querySelector(a.getAttribute('href')));
+  addEventListener('scroll', () => {
+    nav.classList.toggle('show', hero.getBoundingClientRect().bottom < 0);
+    let cur = -1; secs.forEach((s, i) => { if (s.getBoundingClientRect().top < 140) cur = i; });
+    links.forEach((a, i) => a.classList.toggle('active', i === cur));
+  }, { passive: true });
+})();
+
+/* ---------- Why π: step buttons swap the graph ---------- */
+(function () {
+  const imgs = [...document.querySelectorAll('#whyStage img')], btns = [...document.querySelectorAll('#whySteps .step')];
+  btns.forEach((b, i) => b.addEventListener('click', () => {
+    btns.forEach((x, j) => x.classList.toggle('on', j === i));
+    imgs.forEach((x, j) => x.classList.toggle('on', j === i));
+  }));
+})();
+
+/* ---------- Method explorer: tabs + step highlights ---------- */
+(function () {
+  const tabs = [...document.querySelectorAll('#mxTabs button')], panes = [...document.querySelectorAll('.mx')];
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.toggle('on', x === t));
+    panes.forEach(p => p.hidden = p.dataset.fig !== t.dataset.fig);
+  }));
+  panes.forEach(p => {
+    const fig = p.querySelector('.mx-fig'), img = fig.querySelector('img'), hl = fig.querySelector('.hl');
+    const btns = [...p.querySelectorAll('.mx-steps button')];
+    let cur = null;
+    function place(b) {
+      const [x, y, w, h] = b.dataset.box.split(',').map(Number);
+      const fr = fig.getBoundingClientRect(), ir = img.getBoundingClientRect();
+      const ox = ir.left - fr.left, oy = ir.top - fr.top;
+      Object.assign(hl.style, { left: ox + ir.width * x / 100 + 'px', top: oy + ir.height * y / 100 + 'px',
+        width: ir.width * w / 100 + 'px', height: ir.height * h / 100 + 'px' });
+    }
+    btns.forEach(b => b.addEventListener('click', () => {
+      const same = cur === b; cur = same ? null : b;
+      btns.forEach(x => x.classList.toggle('on', x === cur));
+      hl.classList.toggle('on', !!cur); if (cur) place(cur);
+    }));
+    addEventListener('resize', () => cur && place(cur));
+  });
+})();
+
+/* ---------- Zoom lines: lens photo box -> SEM image ----------
+   BOX = metalens region on lens_photo.png in % (x, y, w, h). Adjust if you replace the photo. */
+(function () {
+  const BOX = [20.8, 40.6, 7.9, 8.9];
+  const row = document.getElementById('zoomRow'), svg = row.querySelector('.zoom-lines');
+  const lens = document.getElementById('lensImg'), sem = document.getElementById('semImg');
+  function draw() {
+    const R = row.getBoundingClientRect(), L = lens.getBoundingClientRect(), S = sem.getBoundingClientRect();
+    if (!L.width || !S.width) return;
+    const x = L.left - R.left + L.width * BOX[0] / 100, y = L.top - R.top + L.height * BOX[1] / 100;
+    const w = L.width * BOX[2] / 100, h = L.height * BOX[3] / 100;
+    const sx = S.left - R.left, sy = S.top - R.top;
+    svg.innerHTML = `<rect x="${x}" y="${y}" width="${w}" height="${h}"/>` +
+      `<line x1="${x + w}" y1="${y}" x2="${sx}" y2="${sy}"/>` +
+      `<line x1="${x + w}" y1="${y + h}" x2="${sx}" y2="${sy + S.height}"/>`;
+  }
+  [lens, sem].forEach(i => i.complete ? draw() : i.addEventListener('load', draw));
+  addEventListener('resize', draw); addEventListener('load', draw);
+  new ResizeObserver(draw).observe(row);
+})();
+
+/* ---------- Reveal on scroll ---------- */
+(function () {
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.rv').forEach(el => io.observe(el));
+})();
+
+/* ---------- Copy BibTeX ---------- */
+document.getElementById('copyBtn').onclick = e => navigator.clipboard.writeText(document.getElementById('bibText').innerText)
+  .then(() => { e.target.textContent = 'COPIED'; setTimeout(() => e.target.textContent = 'COPY', 1400); });
+
+/* ---------- Lightbox ---------- */
+const lb = document.getElementById('lightbox'), lbi = lb.querySelector('img');
+document.querySelectorAll('img.zoom, .qual img, .mx-fig img').forEach(i => i.addEventListener('click', () => { lbi.src = i.src; lb.classList.add('open'); }));
+lb.onclick = () => lb.classList.remove('open');
+addEventListener('keydown', e => e.key === 'Escape' && lb.classList.remove('open'));
+</script>
+</body>
+</html>

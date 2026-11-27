@@ -1,6 +1,6 @@
 # Learned 𝜋 Metalens for Wide-Field-of-View Near-Infrared Imaging
 
-### [Project Page]((https://eschoi.com/learned-pi-lens/) | [Paper](https://dl.acm.org/doi/abs/10.1145/3842569)
+### [Project Page](https://eschoi.com/learned-pi-lens/) | [Paper](https://dl.acm.org/doi/abs/10.1145/3842569)
 [Eunsue Choi*](https://eschoi.com), [Gyeongtae Kim*](https://scholar.google.co.kr/citations?user=0rZekfsAAAAJ), [Eunji Lee*](https://scholar.google.com/citations?user=yvNUK8AAAAAJ), [Seungwoo Yoon](https://sites.google.com/view/seungwoo-yoon/), [Youngmo Jeong](https://scholar.google.com/citations?user=LBxbo9kAAAAJ), [Woohyeok Kim](https://woo525.github.io/), [Minseok Choi](https://scholar.google.com/citations?user=77qfYpwAAAAJ), [Sunghyun Cho](https://scho.postech.ac.kr/), [Junsuk Rho+](https://sites.google.com/site/junsukrho/), [Seung-Hwan Baek+](https://www.shbaek.com/)
 
 This repository contains the implementation and supplementary files for the paper:
